@@ -1,0 +1,202 @@
+/**************************************************************************//**
+ * @file     main.c
+ * @version  V2.00
+ * $Revision: 2 $
+ * $Date: 15/04/13 10:17a $
+ * @brief
+ *           Show how to generate time-out reset system event while WDT time-out reset delay period expired.
+ *
+ * @note
+ * Copyright (C) 2013 Nuvoton Technology Corp. All rights reserved.
+ ******************************************************************************/
+#include <stdio.h>
+#include "NUC100Series.h"
+
+
+#define PLL_CLOCK           50000000
+
+
+/*---------------------------------------------------------------------------------------------------------*/
+/* Global Interface Variables Declarations                                                                 */
+/*---------------------------------------------------------------------------------------------------------*/
+volatile uint8_t g_u8IsWDTTimeoutINT = 0;
+int g_flag=0;
+
+/**
+ * @brief       IRQ Handler for WDT and WWDT Interrupt
+ *
+ * @param       None
+ *
+ * @return      None
+ *
+ * @details     The WDT_IRQHandler is default IRQ of WDT and WWDT, declared in startup_NUC100Series.s.
+ */
+void WDT_IRQHandler(void)
+{
+    if(WDT_GET_TIMEOUT_INT_FLAG() == 1)
+    {
+        /* Clear WDT time-out interrupt flag */
+        WDT_CLEAR_TIMEOUT_INT_FLAG();
+
+        g_u8IsWDTTimeoutINT = 1;
+				
+        printf("WDT time-out interrupt occurred.(Watch dog timer ocurred!!!)\n");
+				if(g_flag==0)
+				{
+						printf("No problem~~\n");
+				}
+    }
+}
+
+void SYS_Init(void)
+{
+    /*---------------------------------------------------------------------------------------------------------*/
+    /* Init System Clock                                                                                       */
+    /*---------------------------------------------------------------------------------------------------------*/
+    /* Enable Internal RC 22.1184MHz clock */
+    CLK_EnableXtalRC(CLK_PWRCON_OSC22M_EN_Msk);
+
+    /* Waiting for Internal RC clock ready */
+    CLK_WaitClockReady(CLK_CLKSTATUS_OSC22M_STB_Msk);
+
+    /* Switch HCLK clock source to Internal RC and HCLK source divide 1 */
+    CLK_SetHCLK(CLK_CLKSEL0_HCLK_S_HIRC, CLK_CLKDIV_HCLK(1));
+
+    /* Enable external XTAL 12MHz clock and internal 10 kHz */
+    CLK_EnableXtalRC((CLK_PWRCON_XTL12M_EN_Msk | CLK_PWRCON_OSC10K_EN_Msk));
+
+    /* Waiting for clock ready */
+    CLK_WaitClockReady((CLK_CLKSTATUS_XTL12M_STB_Msk | CLK_CLKSTATUS_OSC10K_STB_Msk));
+
+    /* Set core clock as PLL_CLOCK from PLL */
+    CLK_SetCoreClock(PLL_CLOCK);
+    
+    /* Enable UART module clock */
+    CLK_EnableModuleClock(UART0_MODULE);    
+    
+    /* Select UART module clock source */
+    CLK_SetModuleClock(UART0_MODULE, CLK_CLKSEL1_UART_S_HXT, CLK_CLKDIV_UART(1));
+    
+    /* Enable WDT module clock */
+    CLK_EnableModuleClock(WDT_MODULE);    
+        
+    /* Select WDT module clock source */
+    CLK_SetModuleClock(WDT_MODULE, CLK_CLKSEL1_WDT_S_LIRC, NULL);
+
+    /*---------------------------------------------------------------------------------------------------------*/
+    /* Init I/O Multi-function                                                                                 */
+    /*---------------------------------------------------------------------------------------------------------*/
+    /* Set PB multi-function pins for UART0 RXD, TXD */
+    SYS->GPB_MFP = SYS_GPB_MFP_PB0_UART0_RXD | SYS_GPB_MFP_PB1_UART0_TXD;
+}
+
+void UART0_Init(void)
+{
+    /*---------------------------------------------------------------------------------------------------------*/
+    /* Init UART                                                                                               */
+    /*---------------------------------------------------------------------------------------------------------*/
+    /* Reset UART0 */
+    SYS_ResetModule(UART0_RST);
+
+    /* Configure UART0 and set UART0 Baudrate */
+    UART_Open(UART0, 115200);
+}
+
+
+
+
+void GPAB_IRQHandler(void){
+    /* To check if PA interrupt occurred */
+		if(GPIO_GET_INT_FLAG(PA, BIT2))	//key1
+		{
+				printf("Change!!!\n");
+				if(g_flag==0){
+						g_flag=1;
+				}
+				else{
+						g_flag=0;
+				}
+				GPIO_CLR_INT_FLAG(PA, BIT2);
+		}
+}
+
+/*---------------------------------------------------------------------------------------------------------*/
+/*  MAIN function                                                                                          */
+/*---------------------------------------------------------------------------------------------------------*/
+int main(void)
+{
+    /* Unlock protected registers */
+    SYS_UnlockReg();
+
+    /* Init System, peripheral clock and multi-function I/O */
+    SYS_Init();
+
+    /* Lock protected registers */
+    SYS_LockReg();
+
+    /* Init UART0 for printf */
+    UART0_Init();
+
+		/*  Configure PE.5 as Quasi-bidirection mode and enable interrupt by falling edge trigger */
+		GPIO_SetMode(PA, BIT2, GPIO_PMD_QUASI);
+
+		/* Use PA.2 to check time-out period time */
+		GPIO_EnableInt(PA, 2, GPIO_INT_FALLING); //GPIO_EnableInt(PA, 2, GPIO_INT_RISING) is also work;
+		
+		NVIC_EnableIRQ(GPAB_IRQn);
+			
+		PA3=0; PA4=1; PA5=1;		
+		/* Enable interrupt de-bounce function and select de-bounce sampling cycle time is 1024 clocks of LIRC clock */
+    GPIO_SET_DEBOUNCE_TIME(GPIO_DBCLKSRC_LIRC, GPIO_DBCLKSEL_1024);
+    GPIO_ENABLE_DEBOUNCE(PA, BIT0 | BIT1 | BIT2);	
+		
+		if(WDT_GET_RESET_FLAG() == 1 )
+				{
+					g_flag=0;
+					/* Use PA.0 to check time-out period time */
+					GPIO_SetMode(PA, BIT2, GPIO_PMD_QUASI);
+					WDT_CLEAR_RESET_FLAG();
+					printf("*** WDT time-out reset occurred (Alarm!!!~~~reset!!!)***\n\n");
+				}
+
+					
+		printf("Start Lab5\n");	
+		while(1){
+				if(g_flag==0){
+					//PB11=1;
+					printf("Safe!\n");
+				}
+				else{		
+						printf("Alarm!!!\n");
+						//PB11=0;
+				}
+				
+				/* Because of all bits can be written in WDT Control Register are write-protected;
+					 To program it needs to disable register protection first. */
+				SYS_UnlockReg();
+
+				/* Enable WDT time-out reset function and select time-out interval to 2^14 * WDT clock then start WDT counting */
+				g_u8IsWDTTimeoutINT = 0;
+			
+				if(g_flag==0)
+					WDT_Open(WDT_TIMEOUT_2POW16, WDT_RESET_DELAY_1026CLK, FALSE, FALSE); //to change 2^16 ,WDT IRQ will wait1024*Twdt
+																																						//, if WDT counter not reset, WDT will generate chip reset signal.
+				
+				else
+					WDT_Open(WDT_TIMEOUT_2POW16, WDT_RESET_DELAY_1026CLK, TRUE, FALSE); 
+				
+
+				
+				/* Enable WDT interrupt function */
+				WDT_EnableInt();
+
+				/* Enable WDT NVIC */
+				NVIC_EnableIRQ(WDT_IRQn);
+				
+				CLK_SysTickDelay(1000000);
+				CLK_SysTickDelay(1000000);
+				//while(1);
+		}
+}
+
+/*** (C) COPYRIGHT 2013 Nuvoton Technology Corp. ***/
