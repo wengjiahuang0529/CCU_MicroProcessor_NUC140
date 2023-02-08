@@ -1,0 +1,2 @@
+有提到 UART I2C SPI三著的差別
+https://makerpro.cc/2016/07/learning-interfaces-about-uart-i2c-spi/
