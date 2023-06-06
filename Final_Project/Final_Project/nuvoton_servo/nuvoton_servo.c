@@ -1,0 +1,89 @@
+void setup(void)
+{
+	CLK->APBCLK=CLK->APBCLK|CLK_APBCLK_PWM01_EN_Msk|CLK_APBCLK_PWM23_EN_Msk|CLK_APBCLK_PWM45_EN_Msk|CLK_APBCLK_PWM67_EN_Msk;
+	/*CLK->APBCLK.PWM01_EN = 1;
+	CLK->APBCLK.PWM23_EN = 1;
+	CLK->APBCLK.PWM45_EN = 1;
+	CLK->APBCLK.PWM67_EN = 1;*/
+	/*SYS->IPRSTC2.PWM03_RST = 1;
+	SYS->IPRSTC2.PWM03_RST = 0;
+	SYS->IPRSTC2.PWM47_RST = 1;
+	SYS->IPRSTC2.PWM47_RST = 0;*///????????
+	SYS->GPA_MFP=SYS->GPA_MFP|15ul<<12;
+	/*SYS->GPA_MFP.PWM0_AD13 = 1;
+	SYS->GPA_MFP.PWM1_AD14 = 1;
+	SYS->GPA_MFP.PWM2_AD15 = 1;
+	SYS->GPA_MFP.PWM3_I2SMCLK = 1;*/
+	CLK->CLKSEL1=CLK->CLKSEL1|2ul<<CLK_CLKSEL1_PWM23_S_Pos|2ul<<CLK_CLKSEL1_PWM01_S_Pos;
+	CLK->CLKSEL2=CLK->CLKSEL2|2ul<<CLK_CLKSEL2_PWM45_S_Pos|2ul<<CLK_CLKSEL2_PWM67_S_Pos;
+	/*SYSCLK->CLKSEL1.PWM01_S = 2;
+	SYSCLK->CLKSEL1.PWM23_S = 2;
+	SYSCLK->CLKSEL2.PWM45_S = 2;
+	SYSCLK->CLKSEL2.PWM67_S = 2;*/
+	PWMA->PCR=PWMA->PCR  |  PWM_PCR_CH3MOD_Msk  |  PWM_PCR_CH2MOD_Msk  |  PWM_PCR_CH1MOD_Msk  |  PWM_PCR_CH0MOD_Msk;
+	PWMA->PCR=PWMA->PCR   &   (~PWM_PCR_CH3INV_Msk)   &    (~PWM_PCR_CH2INV_Msk)   &   (~PWM_PCR_CH1INV_Msk)   &   (~PWM_PCR_CH0INV_Msk);
+	/*PWMA->PCR.CH0MOD = 1;
+	PWMA->PCR.CH0INV = 0;
+	PWMA->PCR.CH1MOD = 1;
+	PWMA->PCR.CH1INV = 0;
+	PWMA->PCR.CH2MOD = 1;
+	PWMA->PCR.CH2INV = 0;
+	PWMA->PCR.CH3MOD = 1;
+	PWMA->PCR.CH3INV = 0;*/
+	PWMA->PPR=PWMA->PPR|PWM_PPR_CP23_Msk|PWM_PPR_CP01_Msk;
+	/*PWMA->PPR.CP01 = 255;
+	PWMA->PPR.CP23 = 255;*/
+	PWMA->CSR=PWMA->CSR|(2ul << PWM_CSR_CSR3_Pos)|(2ul << PWM_CSR_CSR2_Pos)|(2ul << PWM_CSR_CSR1_Pos)|(2ul << PWM_CSR_CSR0_Pos);
+	/*PWMA->CSR.CSR0 = 2;
+	PWMA->CSR.CSR1 = 2;
+	PWMA->CSR.CSR2 = 2;
+	PWMA->CSR.CSR3 = 2;*/
+}
+uint8_t setservo(uint8_t pin, float val)
+{
+	if(val>180) val=180;
+	float dt=SystemCoreClock/50/256/8;
+	float deg=(val-0)*(12-3)/(180-0)+3;
+	float cnr=dt-1;
+	float cmr=dt*deg/100-1;
+	switch(pin)
+	{
+		case 12:
+			PWMA->CNR0 = cnr;
+			PWMA->CMR0 = cmr;
+			PWMA->CAPENR = 0;
+		  PWMA->POE=PWMA->POE|PWM_POE_POE0_Msk;
+			//PWMA->POE.PWM0 = 1;
+		PWMA->PCR=PWMA->PCR|PWM_PCR_CH3EN_Msk;
+			//PWMA->PCR.CH0EN = 1;
+			break;
+		case 13:
+			PWMA->CNR1 = cnr;
+			PWMA->CMR1 = cmr;
+			PWMA->CAPENR = 0;
+		  PWMA->POE=PWMA->POE|PWM_POE_POE1_Msk;
+			//PWMA->POE.PWM1 = 1;
+		PWMA->PCR=PWMA->PCR|PWM_PCR_CH3EN_Msk;
+			//PWMA->PCR.CH1EN = 1;
+			break;
+		case 14:
+			PWMA->CNR2 = cnr;
+			PWMA->CMR2 = cmr;
+			PWMA->CAPENR = 0;
+		  PWMA->POE=PWMA->POE|PWM_POE_POE2_Msk;
+			//PWMA->POE.PWM2 = 1;
+		PWMA->PCR=PWMA->PCR|PWM_PCR_CH3EN_Msk;
+			//PWMA->PCR.CH2EN = 1;
+			break;
+		case 15:
+			PWMA->CNR3 = cnr;
+			PWMA->CMR3 = cmr;
+			PWMA->CAPENR = 0;
+		  PWMA->POE=PWMA->POE|PWM_POE_POE3_Msk;
+			//PWMA->POE.PWM3 = 1;
+		PWMA->PCR=PWMA->PCR|PWM_PCR_CH3EN_Msk;
+			//PWMA->PCR.CH3EN = 1;
+			break;
+	}
+	return 0;
+}
