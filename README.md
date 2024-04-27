@@ -2,4 +2,4 @@
 
 ![NUC140](https://github.com/wengjiahuang0529/CCU_MicroProcessor_NUC140/blob/88a26413a0961c0309ccb014e55a96380620145e/picture/NUC-140.png)
 
-This project using the NUVOTON ![NUC140](https://www.nuvoton.com/products/microcontrollers/arm-cortex-m0-mcus/nuc140-240-connectivity-series?__locale=zh_TW) development board aims to implement Watchdog timer, UART, SPI, and I2C.
+This project using the NUVOTON [NUC140](https://www.nuvoton.com/products/microcontrollers/arm-cortex-m0-mcus/nuc140-240-connectivity-series?__locale=zh_TW) development board aims to implement Watchdog timer, UART, SPI, and I2C.
